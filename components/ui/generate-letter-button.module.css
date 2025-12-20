@@ -1,0 +1,284 @@
+/* Generate Letter Button - CSS Module with Performance Optimizations */
+
+/* CSS Custom Properties for theming */
+.button {
+  --glb-bg-from: #1a1a2e;
+  --glb-bg-to: #16213e;
+  --glb-text-color: #ffffff;
+  --glb-glimmer-start: transparent;
+  --glb-glimmer-blue-start: #199df4;
+  --glb-glimmer-blue-mid: #00d4ff;
+  --glb-glimmer-white: #ffffff;
+  --glb-shadow-color: rgba(25, 157, 244, 0.3);
+  --glb-animation-duration: 3s;
+  --glb-hover-duration: 1.5s;
+  --glb-border-radius: 8px;
+  --glb-padding-x: 24px;
+  --glb-padding-y: 12px;
+  --glb-gap: 8px;
+  --glb-font-size: 14px;
+  --glb-font-weight: 600;
+  --glb-hover-offset: -2px;
+  --glb-disabled-opacity: 0.6;
+
+  /* Light theme overrides */
+  --glb-bg-from-light: #1a1a2e;
+  --glb-bg-to-light: #16213e;
+
+  /* Dark theme overrides */
+  --glb-bg-from-dark: #0f0f23;
+  --glb-bg-to-dark: #1a1a3e;
+}
+
+/* Base button styles */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--glb-gap);
+  padding: var(--glb-padding-y) var(--glb-padding-x);
+  font-size: var(--glb-font-size);
+  font-weight: var(--glb-font-weight);
+  color: var(--glb-text-color);
+  background: linear-gradient(135deg, var(--glb-bg-from) 0%, var(--glb-bg-to) 100%);
+  border: none;
+  border-radius: var(--glb-border-radius);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  z-index: 1;
+  will-change: transform, box-shadow;
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* Glimmer border effect with performance optimizations */
+.button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: var(--glb-border-radius);
+  background: linear-gradient(
+    90deg,
+    var(--glb-glimmer-start) 0%,
+    var(--glb-glimmer-start) 25%,
+    var(--glb-glimmer-blue-start) 35%,
+    var(--glb-glimmer-blue-mid) 45%,
+    var(--glb-glimmer-white) 50%,
+    var(--glb-glimmer-blue-mid) 55%,
+    var(--glb-glimmer-blue-start) 65%,
+    var(--glb-glimmer-start) 75%,
+    var(--glb-glimmer-start) 100%
+  );
+  background-size: 300% 100%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: glimmer-border var(--glb-animation-duration) linear infinite;
+  z-index: -1;
+  will-change: background-position;
+}
+
+/* Inner background */
+.button::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: linear-gradient(135deg, var(--glb-bg-from) 0%, var(--glb-bg-to) 100%);
+  border-radius: calc(var(--glb-border-radius) - 2px);
+  z-index: -1;
+}
+
+/* Text content */
+.btnText {
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Icon container */
+.btnIcon {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Hover states */
+.button:hover .btnIcon {
+  transform: translateX(4px);
+}
+
+.button:hover {
+  transform: translateY(var(--glb-hover-offset));
+  box-shadow: 0 8px 24px var(--glb-shadow-color);
+}
+
+.button:hover::before {
+  animation-duration: var(--glb-hover-duration);
+}
+
+/* Active state */
+.button:active {
+  transform: translateY(0);
+}
+
+/* Disabled state */
+.button:disabled {
+  opacity: var(--glb-disabled-opacity);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button:disabled:hover {
+  box-shadow: none;
+}
+
+.button:disabled .btnIcon {
+  transform: none;
+}
+
+/* Animation keyframes */
+@keyframes glimmer-border {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: -100% 50%;
+  }
+}
+
+/* Performance optimizations */
+.button:not(:hover)::before {
+  animation-play-state: paused;
+}
+
+.button:hover::before {
+  animation-play-state: running;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .button::before {
+    animation: none;
+    background: linear-gradient(90deg, var(--glb-blue-start), var(--glb-blue-mid), var(--glb-blue-start));
+    background-size: 100% 100%;
+  }
+
+  .button,
+  .button .btnIcon {
+    transition: none;
+    will-change: auto;
+  }
+
+  .button:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .button {
+    --glb-bg-from: var(--glb-bg-from-dark);
+    --glb-bg-to: var(--glb-bg-to-dark);
+  }
+}
+
+/* Light mode support */
+@media (prefers-color-scheme: light) {
+  .button {
+    --glb-bg-from: var(--glb-bg-from-light);
+    --glb-bg-to: var(--glb-bg-to-light);
+  }
+}
+
+/* Print styles */
+@media print {
+  .button::before {
+    display: none;
+  }
+
+  .button {
+    background: #000 !important;
+    color: #fff !important;
+    border: 1px solid #000 !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .button {
+    --glb-text-color: #ffffff;
+    --glb-bg-from: #000000;
+    --glb-bg-to: #000000;
+    --glb-glimmer-blue-start: #ffffff;
+    --glb-glimmer-blue-mid: #ffffff;
+    --glb-glimmer-white: #ffffff;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+.button:focus-visible {
+  outline: 2px solid var(--glb-glimmer-blue-start);
+  outline-offset: 2px;
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .button:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .button:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Loading state styles */
+.button.loading {
+  pointer-events: none;
+}
+
+.button.loading .btnIcon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Browser compatibility fallbacks */
+@supports not (mask-composite: exclude) {
+  .button::before {
+    -webkit-mask-composite: xor;
+    mask-composite: xor;
+  }
+}
+
+@supports not (-webkit-mask-composite: xor) {
+  .button::before {
+    border: 2px solid transparent;
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+}
