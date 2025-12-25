@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DEFAULT_LOGO_ALT, DEFAULT_LOGO_SRC } from '@/lib/constants'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -149,6 +151,16 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center mb-4">
+            <Image
+              src={DEFAULT_LOGO_SRC}
+              alt={DEFAULT_LOGO_ALT}
+              width={56}
+              height={56}
+              className="h-14 w-14 rounded-full logo-badge"
+              priority
+            />
+          </div>
           <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
           <CardDescription>
             Join Talk-To-My-Lawyer as a subscriber or employee

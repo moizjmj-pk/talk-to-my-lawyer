@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -20,6 +21,7 @@ import {
   FileStack
 } from "lucide-react"
 import { useState } from "react"
+import { DEFAULT_LOGO_ALT, DEFAULT_LOGO_SRC } from "@/lib/constants"
 
 interface NavItem {
   title: string
@@ -87,14 +89,28 @@ export function AdminSidebar() {
       isCollapsed ? "w-16" : "w-64"
     )}>
       <div className="p-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="mb-4"
-        >
-          {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Image
+              src={DEFAULT_LOGO_SRC}
+              alt={DEFAULT_LOGO_ALT}
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full logo-badge"
+              priority
+            />
+            {!isCollapsed && (
+              <span className="text-sm font-semibold text-gray-900">Talk-To-My-Lawyer</span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
+          </Button>
+        </div>
 
         <nav className="space-y-2">
           {navItems.map((item) => {
