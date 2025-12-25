@@ -200,6 +200,11 @@ export function GenerationTrackerModal({
             const isFinalStep = index === steps.length - 1
             const showRejected = isFinalStep && status === "rejected"
             const showFailed = isFinalStep && status === "failed"
+            const showSuccess = isFinalStep && (status === "approved" || status === "completed")
+            const successIconClass = cn(
+              "h-4 w-4",
+              showSuccess && "animate-in zoom-in duration-200 motion-reduce:animate-none",
+            )
 
             return (
               <div key={step.title} className="relative flex items-start gap-4">
@@ -213,7 +218,7 @@ export function GenerationTrackerModal({
                   {showRejected || showFailed ? (
                     <XCircle className="h-4 w-4 text-destructive" />
                   ) : isCompleted ? (
-                    <CheckCircle2 className="h-4 w-4" />
+                    <CheckCircle2 className={successIconClass} />
                   ) : isCurrent ? (
                     <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
                   ) : (
