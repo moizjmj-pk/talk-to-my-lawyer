@@ -32,7 +32,7 @@ This repository is a Next.js 16 (React 19, TypeScript, Tailwind) SaaS for AI-ass
   - Fraud detection: `fraud-detection/coupon-fraud.ts`.
   - Validation: `validation/letter-schema.ts` schemas.
 - **types/**: shared domain types (`types/index.ts`); Supabase types live at `lib/database.types.ts`.
-- **supabase/**: SQL migrations under `supabase/migrations`; configuration in `supabase` dir and scripts under `scripts/` (`run-migrations.js`, `validate-env.js`, `health-check.js`, etc.).
+- **supabase/**: SQL migrations under `supabase/migrations`; configuration in `supabase` dir and scripts under `scripts/` (e.g. `validate-env.js`, `health-check.js`, etc.).
 - **styles/**: Tailwind/global styles.
 - **public/**: static assets.
 - **config**: Next config (`next.config.mjs`), ESLint (`eslint.config.mjs`), PostCSS/Tailwind setup, Vercel config (`vercel.json`), instrumentation (`instrumentation.ts`), type config (`tsconfig.json`).
@@ -53,7 +53,7 @@ All routes live under `app/api` and use structured JSON responses, Supabase auth
 
 ## Data and workflows
 - **Auth & roles**: Supabase Auth with profiles keyed by user ID; roles `subscriber`, `employee`, `admin`. Admin portal additionally checks `ADMIN_PORTAL_KEY` and CSRF tokens for write actions.
-- **Letters**: `letters` table tracks lifecycle from draft → generating → pending_review → under_review → approved/rejected/completed/failed; audit trail stored separately. AI drafts via OpenAI (fallback to Google AI defined in `lib/ai/openai-retry.ts`). Admin review routes update status, notes, and trigger emails.
+- **Letters**: `letters` table tracks lifecycle from draft → generating → pending_review → under_review → approved/rejected/completed/failed; audit trail stored separately. AI drafts via OpenAI. Admin review routes update status, notes, and trigger emails.
 - **Subscriptions & coupons**: Stripe checkout sessions attach plan metadata; coupons validated with fraud detection; allowances deducted during generation; employee referrals create commission records.
 - **Email**: Provider-agnostic service with queueing; templates for welcome, letter updates, subscription confirmation, etc.; queue processor route handles retries.
 - **PDF**: `lib/pdf/generator.ts` builds letter PDFs for download/email.
