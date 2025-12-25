@@ -1,8 +1,10 @@
 import { getAdminSession } from '@/lib/auth/admin-session'
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { FileText, DollarSign, BarChart3, Shield, Gavel, LayoutDashboard, FileStack, Ticket, Users, Mail } from 'lucide-react'
 import { AdminLogoutButton } from '@/components/admin-logout-button'
+import { DEFAULT_LOGO_ALT, DEFAULT_LOGO_SRC } from '@/lib/constants'
 
 export default async function AdminDashboardLayout({
   children,
@@ -80,9 +82,14 @@ export default async function AdminDashboardLayout({
           {/* Header */}
           <div className="p-4 border-b border-slate-700">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
+              <Image
+                src={DEFAULT_LOGO_SRC}
+                alt={DEFAULT_LOGO_ALT}
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-full logo-badge"
+                priority
+              />
               <div>
                 <h1 className="text-sm font-bold text-white">Admin Portal</h1>
                 <p className="text-xs text-slate-400">Secure Access</p>
