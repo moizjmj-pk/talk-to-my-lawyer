@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
 # Environment variables - NEVER commit these
 .env
@@ -9,6 +10,10 @@ node_modules/
 .env.test.local
 .env.production.local
 .env.production
+
+# ALLOW these template files to be committed
+!.env.example
+!.env.docker
 
 # Sensitive documentation - NEVER commit files with actual secrets
 VERCEL_ENV_SETUP.md
@@ -47,8 +52,9 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Claude Code
+# Claude Code / AI tools
 .claude/
+.emergent/
 
 # Shell scripts with secrets
 claude_code_zai_env.sh
@@ -66,28 +72,3 @@ vercel-env.json
 *.log
 *.bak
 *.tmp
-.env.production
-node_modules
-.pnpm-store/
-
-# Emergent AI
-.emergent/
-
-# Local environment (never commit)
-.env.local
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
