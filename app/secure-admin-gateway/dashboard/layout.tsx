@@ -1,4 +1,4 @@
-import { getAdminSession } from '@/lib/auth/admin-session'
+import { ADMIN_SESSION_IDLE_TIMEOUT_MS, getAdminSession } from '@/lib/auth/admin-session'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -16,6 +16,10 @@ export default async function AdminDashboardLayout({
   if (!session) {
     redirect('/secure-admin-gateway/login')
   }
+
+  const lastActivityMs = session.lastActivity ? new Date(session.lastActivity).getTime() : Date.now()
+  const idleRemainingMs = Math.max(0, ADMIN_SESSION_IDLE_TIMEOUT_MS - (Date.now() - lastActivityMs))
+  const idleRemainingMinutes = Math.floor(idleRemainingMs / 60000)
 
   const navigation = [
     {
@@ -108,7 +112,7 @@ export default async function AdminDashboardLayout({
               <span className="text-xs text-amber-500 font-semibold">System Administrator</span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Session expires in {Math.round((1800000 - (Date.now() - session.lastActivity)) / 60000)} min
+              Session expires in {idleRemainingMinutes} min
             </p>
           </div>
 

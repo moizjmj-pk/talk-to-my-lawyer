@@ -1,136 +1,181 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { verifyAdminSessionFromRequest } from '@/lib/auth/admin-session'
+import {
+  ADMIN_SESSION_COOKIE,
+  ADMIN_SESSION_IDLE_TIMEOUT_MS,
+  verifyAdminRole,
+  verifyAdminSessionFromRequest,
+} from '@/lib/auth/admin-session'
+
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/landing-page-new',
+  '/favicon.ico',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/manifest.json',
+  '/site.webmanifest',
+])
+
+const PUBLIC_PREFIXES = ['/auth', '/api/health', '/api/health/detailed', '/_next', '/public']
+
+function isPublicPath(pathname: string, adminPortalRoute: string) {
+  if (PUBLIC_PATHS.has(pathname)) {
+    return true
+  }
+
+  if (pathname.startsWith(`/${adminPortalRoute}/login`)) {
+    return true
+  }
+
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
+
+function handleMissingSupabaseEnv(request: NextRequest, isPublic: boolean) {
+  if (isPublic) {
+    return NextResponse.next()
+  }
+
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    return NextResponse.json(
+      {
+        error: 'Supabase environment not configured',
+      },
+      { status: 503 }
+    )
+  }
+
+  const url = request.nextUrl.clone()
+  url.pathname = '/'
+  url.searchParams.set('error', 'supabase-missing')
+  return NextResponse.redirect(url)
+}
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const adminPortalRoute = process.env.ADMIN_PORTAL_ROUTE || 'secure-admin-gateway'
+  const pathname = request.nextUrl.pathname
+  const isPublic = isPublicPath(pathname, adminPortalRoute)
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return handleMissingSupabaseEnv(request, isPublic)
+  }
+
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        supabaseResponse = NextResponse.next({
+          request,
+        })
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        )
+      },
+    },
   })
 
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error(
-        '[Middleware] Missing Supabase env. Create .env.local (cp .env.example .env.local), set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, then restart the dev server.'
-      )
-      // Allow access to auth pages and home without Supabase
-      if (request.nextUrl.pathname.startsWith('/auth') || request.nextUrl.pathname === '/') {
-        return supabaseResponse
-      }
-      
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
-    }
+  let userRole: string | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            )
-            supabaseResponse = NextResponse.next({
-              request,
-            })
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
+    userRole = profile?.role ?? null
+  }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  const isAdminPortalRoute = pathname.startsWith(`/${adminPortalRoute}`)
+  const isDashboardRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
 
-    // Get user role for route protection
-    let userRole = null
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      
-      userRole = profile?.role
-    }
+  const adminSessionResult = isAdminPortalRoute
+    ? await verifyAdminSessionFromRequest(request)
+    : { session: null, shouldClearCookie: false, shouldRefreshCookie: false }
 
-    const pathname = request.nextUrl.pathname
+  if (adminSessionResult.shouldClearCookie) {
+    supabaseResponse.cookies.delete(ADMIN_SESSION_COOKIE)
+  } else if (adminSessionResult.shouldRefreshCookie && adminSessionResult.cookieValue) {
+    supabaseResponse.cookies.set(ADMIN_SESSION_COOKIE, adminSessionResult.cookieValue, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: ADMIN_SESSION_IDLE_TIMEOUT_MS / 1000,
+      path: '/',
+    })
+  }
 
-    // Admin Portal Protection (BEFORE regular auth checks)
-    const adminPortalRoute = process.env.ADMIN_PORTAL_ROUTE || 'secure-admin-gateway'
-    if (pathname.startsWith(`/${adminPortalRoute}`)) {
-      // Allow login page
-      if (pathname === `/${adminPortalRoute}/login`) {
-        return supabaseResponse
-      }
+  if (isAdminPortalRoute) {
+    const loginPath = `/${adminPortalRoute}/login`
 
-      // Verify admin session for all other admin portal routes
-      const adminSession = verifyAdminSessionFromRequest(request)
-      if (!adminSession) {
-        const url = request.nextUrl.clone()
-        url.pathname = `/${adminPortalRoute}/login`
-        return NextResponse.redirect(url)
-      }
-
+    if (pathname === loginPath) {
       return supabaseResponse
     }
 
-    // Block access to old admin routes completely
-    if (pathname.startsWith('/dashboard/admin')) {
+    if (!adminSessionResult.session) {
       const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
+      url.pathname = loginPath
       return NextResponse.redirect(url)
     }
 
-    // Public routes
-    if (pathname === '/' || pathname.startsWith('/auth')) {
-      return supabaseResponse
-    }
-
-    // Require auth for dashboard
-    if (!user && pathname.startsWith('/dashboard')) {
+    const hasAdminRole = await verifyAdminRole(adminSessionResult.session.userId)
+    if (!hasAdminRole) {
+      supabaseResponse.cookies.delete(ADMIN_SESSION_COOKIE)
       const url = request.nextUrl.clone()
-      url.pathname = '/auth/login'
+      url.pathname = loginPath
       return NextResponse.redirect(url)
-    }
-
-    // Role-based routing
-    if (user && userRole) {
-      if (userRole === 'employee' && (pathname.startsWith('/dashboard/letters') || pathname.startsWith('/dashboard/subscription'))) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/dashboard/commissions'
-        return NextResponse.redirect(url)
-      }
-
-      if ((pathname.startsWith('/dashboard/commissions') || pathname.startsWith('/dashboard/coupons')) && userRole === 'subscriber') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/dashboard/letters'
-        return NextResponse.redirect(url)
-      }
     }
 
     return supabaseResponse
-  } catch (error) {
-    console.error('[v0] Middleware error:', error)
-    
-    // Allow access to auth pages even on error
-    if (request.nextUrl.pathname.startsWith('/auth') || request.nextUrl.pathname === '/') {
-      return supabaseResponse
-    }
-    
-    // Redirect to home with error for other routes
+  }
+
+  if (pathname.startsWith('/dashboard/admin')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
+
+  if (isDashboardRoute && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
+  }
+
+  if (!isPublic && pathname.startsWith('/secure-admin-gateway')) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/${adminPortalRoute}/login`
+    return NextResponse.redirect(url)
+  }
+
+  if (user && userRole) {
+    if (
+      userRole === 'employee' &&
+      (pathname.startsWith('/dashboard/letters') || pathname.startsWith('/dashboard/subscription'))
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard/commissions'
+      return NextResponse.redirect(url)
+    }
+
+    if (
+      (pathname.startsWith('/dashboard/commissions') || pathname.startsWith('/dashboard/coupons')) &&
+      userRole === 'subscriber'
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard/letters'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  return supabaseResponse
 }

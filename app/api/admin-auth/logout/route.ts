@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    await destroyAdminSession()
+    await destroyAdminSession(request)
 
     return NextResponse.json({
       success: true,

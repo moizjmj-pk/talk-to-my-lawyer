@@ -53,6 +53,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
 # Admin Portal (for multi-admin access)
 ADMIN_PORTAL_KEY=
+ADMIN_SESSION_SECRET=
 
 # Email Service (choose provider)
 EMAIL_PROVIDER=resend  # Options: resend, brevo, sendgrid, smtp, console
