@@ -79,15 +79,27 @@ node_modules
 # Environment files
 *.env
 *.env.*
+
+# Exception: Allow .env.development to be tracked (development branch only)
+!.env.development
 -e 
 # Environment files
 *.env
 *.env.*
+
+# Exception: Allow .env.development to be tracked (development branch only)
+!.env.development
 -e 
 # Environment files
 *.env
 *.env.*
+
+# Exception: Allow .env.development to be tracked (development branch only)
+!.env.development
 -e 
 # Environment files
 *.env
 *.env.*
+
+# Exception: Allow .env.development to be tracked (development branch only)
+!.env.development
