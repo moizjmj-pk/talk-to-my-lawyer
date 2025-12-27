@@ -91,8 +91,11 @@ export interface AuthUser {
 }
 
 export interface AdminSession {
+  sessionId: string
+  userId: string
   email: string
-  expiresAt: number
+  lastActivity: string
+  expiresAt: string
 }
 
 // Payment Types
@@ -155,6 +158,7 @@ export interface EnvConfig {
   ADMIN_EMAIL: string
   ADMIN_PASSWORD: string
   ADMIN_PORTAL_KEY: string
+  ADMIN_SESSION_SECRET: string
   NEXT_PUBLIC_APP_URL?: string
 }
 

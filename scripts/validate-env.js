@@ -5,6 +5,7 @@ const requiredEnvVars = {
     { name: 'NEXT_PUBLIC_SUPABASE_URL', description: 'Supabase project URL' },
     { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', description: 'Supabase anonymous key' },
     { name: 'OPENAI_API_KEY', description: 'OpenAI API key for letter generation' },
+    { name: 'ADMIN_SESSION_SECRET', description: 'HMAC secret for admin sessions' },
   ],
   production: [
     { name: 'SUPABASE_SERVICE_ROLE_KEY', description: 'Supabase service role key' },

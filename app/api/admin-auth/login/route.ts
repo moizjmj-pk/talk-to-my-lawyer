@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create admin session
-    await createAdminSession(result.userId!, email)
+    await createAdminSession(result.userId!, email, request)
 
     // Log successful login
     console.log('[AdminAuth] Successful admin login:', {
