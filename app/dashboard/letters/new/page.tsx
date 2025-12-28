@@ -339,15 +339,95 @@ export default function NewLetterPage() {
               </div>
 
               {selectedType === "demand_letter" && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="amountDemanded">Amount Demanded ($)</Label>
+                    <Input
+                      id="amountDemanded"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.amountDemanded}
+                      onChange={(e) => setFormData({ ...formData, amountDemanded: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="deadlineDate">Deadline for Response</Label>
+                    <Input
+                      id="deadlineDate"
+                      type="date"
+                      value={formData.deadlineDate}
+                      onChange={(e) => setFormData({ ...formData, deadlineDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {selectedType === "cease_desist" && (
                 <div>
-                  <Label htmlFor="amountDemanded">Amount Demanded ($)</Label>
+                  <Label htmlFor="deadlineDate">Deadline to Cease Activity</Label>
                   <Input
-                    id="amountDemanded"
-                    type="number"
-                    step="0.01"
-                    value={formData.amountDemanded}
-                    onChange={(e) => setFormData({ ...formData, amountDemanded: e.target.value })}
+                    id="deadlineDate"
+                    type="date"
+                    value={formData.deadlineDate}
+                    onChange={(e) => setFormData({ ...formData, deadlineDate: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Specify by when the activity must stop
+                  </p>
+                </div>
+              )}
+
+              {(selectedType === "contract_breach" || selectedType === "employment_dispute") && (
+                <div>
+                  <Label htmlFor="incidentDate">Date of Incident/Breach</Label>
+                  <Input
+                    id="incidentDate"
+                    type="date"
+                    value={formData.incidentDate}
+                    onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    When did the breach or incident occur?
+                  </p>
+                </div>
+              )}
+
+              {selectedType === "eviction_notice" && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="deadlineDate">Notice to Vacate By</Label>
+                    <Input
+                      id="deadlineDate"
+                      type="date"
+                      value={formData.deadlineDate}
+                      onChange={(e) => setFormData({ ...formData, deadlineDate: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="incidentDate">Lease Start Date</Label>
+                    <Input
+                      id="incidentDate"
+                      type="date"
+                      value={formData.incidentDate}
+                      onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {selectedType === "consumer_complaint" && (
+                <div>
+                  <Label htmlFor="incidentDate">Date of Purchase or Incident</Label>
+                  <Input
+                    id="incidentDate"
+                    type="date"
+                    value={formData.incidentDate}
+                    onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    When did you purchase the product or when did the issue occur?
+                  </p>
                 </div>
               )}
 
