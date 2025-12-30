@@ -56,6 +56,9 @@ jobs:
             "KV_REST_API_URL"
             "KV_REST_API_TOKEN"
             "RESEND_API_KEY"
+            "VERCEL_TOKEN"
+            "VERCEL_ORG_ID"
+            "VERCEL_PROJECT_ID"
           )
 
           MISSING_SECRETS=()
@@ -86,6 +89,9 @@ jobs:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build for production
         run: pnpm build
@@ -93,18 +99,18 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || vars.PRODUCTION_URL }}
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || vars.PRODUCTION_URL }}
-          NEXT_PUBLIC_TEST_MODE: false
+          NEXT_PUBLIC_APP_URL: ${{ vars.PRODUCTION_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.PRODUCTION_URL }}
+          NEXT_PUBLIC_TEST_MODE: "false"
 
-      - name: Deploy to Vercel
+      - name: Deploy to Vercel (non-interactive)
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: "--prod"
           working-directory: ./
+          vercel-args: "--prod --yes"
 
       - name: Deployment summary
         run: |
