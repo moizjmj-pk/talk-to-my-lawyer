@@ -73,7 +73,10 @@ export default function DashboardLayout({
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/')
+    // Clear local state immediately to prevent redirect loops
+    setProfile(null)
+    // Force a hard navigation to ensure clean session state
+    window.location.href = '/'
   }
 
   if (loading) {

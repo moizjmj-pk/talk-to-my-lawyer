@@ -15,7 +15,7 @@ export async function DashboardLayout({ children }: { children: React.ReactNode 
     'use server'
     const supabase = await createClient()
     await supabase.auth.signOut()
-    redirect('/auth/login')
+    redirect('/')
   }
 
   const navigation = {
