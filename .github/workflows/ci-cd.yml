@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 # Trigger workflow on push to any branch and pull requests to main
 on:
@@ -178,82 +178,3 @@ jobs:
             git push
           fi
 
-  # Job 5: Deploy to Vercel
-  # Automatically deploys to Vercel on successful builds
-  # Only runs on pushes to main branch (not PRs)
-  deploy:
-    name: Deploy to Vercel
-    runs-on: ubuntu-latest
-    needs: [lint-and-typecheck, build, security-audit]
-    # Only deploy on pushes to main branch
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read       # Read code for deployment
-      pull-requests: write # Write comments on commits
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.url }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-          
-      - name: Pull Vercel Environment Information
-        id: vercel-env
-        run: npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        
-      - name: Build Project Artifacts
-        id: build-vercel
-        run: npx vercel build --prod --token=$VERCEL_TOKEN
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        
-      - name: Deploy Project Artifacts to Vercel
-        id: deploy
-        run: |
-          url=$(npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN)
-          echo "url=$url" >> $GITHUB_OUTPUT
-          echo "Deployed to: $url"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          
-      - name: Deployment Status Comment
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const status = '${{ steps.deploy.outcome }}';
-            const urlOutput = '${{ steps.deploy.outputs.url }}';
-            const isSuccess = status === 'success';
-            const hasUrl = isSuccess && urlOutput && urlOutput.trim().length > 0;
-            const emoji = isSuccess ? '✅' : '❌';
-            
-            let message;
-            if (isSuccess && hasUrl) {
-              message = `${emoji} Deployment successful!\n\nURL: ${urlOutput}`;
-            } else if (isSuccess) {
-              message = `${emoji} Deployment successful, but no deployment URL was reported.`;
-            } else {
-              message = `${emoji} Deployment failed. Check logs for details.`;
-            }
-            
-            // Post comment on the commit
-            github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: message
-            });
