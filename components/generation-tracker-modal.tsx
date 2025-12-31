@@ -59,7 +59,7 @@ export function GenerationTrackerModal({
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "letters", filter: `id=eq.${letterId}` },
         (payload: RealtimePostgresChangesPayload<{ status: string }>) => {
-          const nextStatus = payload.new?.status as LetterStatus | undefined
+          const nextStatus = 'status' in payload.new && payload.new.status as LetterStatus | undefined
           if (nextStatus) {
             setStatus(nextStatus)
           }
