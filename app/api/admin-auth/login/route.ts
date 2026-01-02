@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminCredentials, createAdminSession } from '@/lib/auth/admin-session'
-import { isAdminAuthConfigured } from '@/lib/admin/config-validator'
 import { adminRateLimit, safeApplyRateLimit } from '@/lib/rate-limit-redis'
 
+/**
+ * Admin login endpoint - Role-based authentication
+ *
+ * No shared secret required. Each admin uses their own credentials.
+ * Access is determined solely by the `role = 'admin'` field in the profiles table.
+ *
+ * Security benefits:
+ * - Individual accountability (each admin has unique credentials)
+ * - No shared secret to leak or rotate
+ * - Easy deactivation (just change the user's role)
+ * - Full audit trail of which admin performed each action
+ */
 export async function POST(request: NextRequest) {
   try {
     // Apply rate limiting
@@ -11,30 +22,21 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse
     }
 
-    // Check if admin authentication is properly configured
-    if (!isAdminAuthConfigured()) {
-      console.error('[AdminAuth] Admin authentication not configured')
-      return NextResponse.json(
-        { error: 'Admin authentication is not properly configured' },
-        { status: 500 }
-      )
-    }
-
     const body = await request.json()
-    const { email, password, portalKey } = body
+    const { email, password } = body
 
-    if (!email || !password || !portalKey) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email, password, and portal key are required' },
+        { error: 'Email and password are required' },
         { status: 400 }
       )
     }
 
-    // Verify credentials and portal key
-    const result = await verifyAdminCredentials(email, password, portalKey)
+    // Verify credentials and check admin role
+    const result = await verifyAdminCredentials(email, password)
 
     if (!result.success) {
-      // Log failed login attempt
+      // Log failed login attempt for security monitoring
       console.warn('[AdminAuth] Failed login attempt:', {
         email,
         timestamp: new Date().toISOString(),
@@ -49,13 +51,6 @@ export async function POST(request: NextRequest) {
 
     // Create admin session
     await createAdminSession(result.userId!, email)
-
-    // Log successful login
-    console.log('[AdminAuth] Successful admin login:', {
-      email,
-      userId: result.userId,
-      timestamp: new Date().toISOString()
-    })
 
     return NextResponse.json({
       success: true,
