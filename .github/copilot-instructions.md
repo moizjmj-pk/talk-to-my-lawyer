@@ -91,7 +91,22 @@ Falls back to in-memory when Upstash unavailable.
 ### User Roles (`profiles.role`)
 - `subscriber` - Generate letters, view own letters, manage subscription
 - `employee` - Coupon code (20% off), commission tracking (5%), never sees letters
-- `admin` - Review Center access, approve/reject letters, full visibility
+- `admin` - Review Center access, approve/reject letters, analytics, full visibility
+
+### Elevating a User to Admin
+Admins are never created through normal signup. Use one of these methods:
+
+**CLI Script (recommended):**
+```bash
+npx dotenv-cli -e .env.local -- npx tsx scripts/create-additional-admin.ts <email> <password>
+```
+
+**Promote existing user via SQL:**
+```sql
+UPDATE profiles SET role = 'admin' WHERE email = 'user@example.com';
+```
+
+Admin login requires 3 factors: email + password + `ADMIN_PORTAL_KEY` environment variable.
 
 ### Letter Status Flow
 `draft` → `generating` → `pending_review` → `under_review` → `approved`/`rejected`/`completed`/`failed`

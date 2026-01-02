@@ -496,7 +496,6 @@ CREATE TABLE profiles (
   role TEXT NOT NULL CHECK (role IN ('subscriber', 'employee', 'admin')),
   phone TEXT,
   company_name TEXT,
-  is_super_user BOOLEAN DEFAULT FALSE,
   avatar_url TEXT,
   bio TEXT,
   stripe_customer_id TEXT,

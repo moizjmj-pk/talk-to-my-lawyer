@@ -139,7 +139,6 @@ export interface DraftSaveRequest {
 export interface LetterAllowance {
   has_allowance: boolean
   remaining: number | null
-  is_super: boolean
 }
 
 /**

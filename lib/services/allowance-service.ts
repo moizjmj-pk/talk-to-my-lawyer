@@ -12,7 +12,6 @@ import type { LetterAllowance } from '@/lib/types/letter.types'
 export interface GenerationEligibility {
   canGenerate: boolean
   isFreeTrial: boolean
-  isSuperUser: boolean
   hasAllowance: boolean
   remainingAllowance: number | null
   totalGenerated: number
@@ -30,9 +29,8 @@ export async function checkLetterAllowance(userId: string): Promise<LetterAllowa
   })
 
   return {
-    has_allowance: data?.has_allowance && (data?.remaining || 0) > 0,
-    remaining: data?.remaining ?? 0,
-    is_super: data?.is_super ?? false,
+    has_allowance: data?.has_access ?? false,
+    remaining: data?.letters_remaining ?? 0,
   }
 }
 
@@ -56,15 +54,14 @@ export async function getTotalLettersGenerated(userId: string): Promise<number> 
  */
 export function isFreeTrialEligible(
   totalGenerated: number,
-  hasAllowance: boolean,
-  isSuperUser: boolean
+  hasAllowance: boolean
 ): boolean {
-  return totalGenerated === 0 && !hasAllowance && !isSuperUser
+  return totalGenerated === 0 && !hasAllowance
 }
 
 /**
  * Comprehensive check for letter generation eligibility
- * Combines free trial, allowance, and super user checks
+ * Combines free trial and allowance checks
  */
 export async function checkGenerationEligibility(
   userId: string
@@ -75,15 +72,14 @@ export async function checkGenerationEligibility(
     checkLetterAllowance(userId),
   ])
 
-  const isSuperUser = allowance.is_super
   const hasAllowance = allowance.has_allowance
   const remainingAllowance = allowance.remaining
 
   // Determine if free trial applies
-  const isFreeTrial = isFreeTrialEligible(totalGenerated, hasAllowance, isSuperUser)
+  const isFreeTrial = isFreeTrialEligible(totalGenerated, hasAllowance)
 
   // Check if user can generate
-  const canGenerate = isFreeTrial || hasAllowance || isSuperUser
+  const canGenerate = isFreeTrial || hasAllowance
 
   // Provide reason if not eligible
   let reason: string | undefined
@@ -98,9 +94,12 @@ export async function checkGenerationEligibility(
   return {
     canGenerate,
     isFreeTrial,
-    isSuperUser,
     hasAllowance,
     remainingAllowance,
+    totalGenerated,
+    reason,
+  }
+}
     totalGenerated,
     reason,
   }
@@ -215,7 +214,7 @@ export async function incrementTotalLetters(userId: string): Promise<{ success: 
  * Check if deduction should be skipped based on user type
  */
 export function shouldSkipDeduction(eligibility: GenerationEligibility): boolean {
-  return eligibility.isFreeTrial || eligibility.isSuperUser
+  return eligibility.isFreeTrial
 }
 
 /**

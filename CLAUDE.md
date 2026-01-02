@@ -261,7 +261,7 @@ Once authenticated, admins have access to:
 - **View All Users**: Complete user directory
 - **User Details**: Profile, subscription status, letters generated, usage limits
 - **Drill-Down**: Individual user activity and letter history
-- **Role Distribution**: Subscribers, employees, admins, super users
+- **Role Distribution**: Subscribers, employees, admins
 
 #### 4. Employees Management (`/secure-admin-gateway/dashboard/coupons`)
 - **Employee Directory**: All registered employees

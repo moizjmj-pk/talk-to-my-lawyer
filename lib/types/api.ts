@@ -87,7 +87,6 @@ export interface AuthUser {
   id: string
   email?: string
   role?: 'subscriber' | 'employee' | 'admin'
-  isSuperUser?: boolean
 }
 
 export interface AdminSession {

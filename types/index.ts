@@ -44,7 +44,6 @@ export interface Profile {
   phone?: string
   company_name?: string
   avatar_url?: string
-  is_super_user?: boolean
   created_at: string
   updated_at: string
 }

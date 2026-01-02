@@ -61,10 +61,10 @@ export async function POST(
       .eq('user_id', user.id)
       .not('status', 'eq', 'failed')
 
-    const isFreeTrial = (letterCount || 0) === 0 && !allowance?.is_super
+    const isFreeTrial = (letterCount || 0) === 0
 
-    if (!isFreeTrial && !allowance?.is_super) {
-      if (!allowance?.has_allowance || (allowance?.remaining || 0) <= 0) {
+    if (!isFreeTrial) {
+      if (!allowance?.has_access || (allowance?.letters_remaining || 0) <= 0) {
         return NextResponse.json({ 
           error: 'No letter allowances remaining. Please purchase more letters or upgrade your plan.',
           needsSubscription: true 
