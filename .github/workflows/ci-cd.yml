@@ -46,11 +46,9 @@ jobs:
         
       - name: Run ESLint
         run: pnpm lint
-        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
-        
+
       - name: Type check
         run: pnpm exec tsc --noEmit
-        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
 
   # Job 2: Build Application
   # Ensures the Next.js application builds successfully
