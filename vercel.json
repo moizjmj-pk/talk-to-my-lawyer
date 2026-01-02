@@ -1,8 +1,86 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
   "crons": [
     {
       "path": "/api/cron/process-email-queue",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-expired-sessions",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/health-check",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/daily-analytics",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-cleanup",
+      "schedule": "0 2 * * 0"
     }
-  ]
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/home",
+      "destination": "/dashboard",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/cron/:path*",
+      "destination": "/api/cron/:path*"
+    }
+  ],
+  "functions": {
+    "app/api/generate-letter/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/letters/improve/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/stripe/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/admin/**": {
+      "maxDuration": 30
+    },
+    "app/api/letters/[id]/pdf/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/cron/**": {
+      "maxDuration": 120
+    }
+  }
 }
