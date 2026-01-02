@@ -175,6 +175,7 @@ export async function POST(request: NextRequest) {
       return handleGenerationFailure(
         supabase,
         newLetter.id,
+        user.id,
         generationError,
         eligibility
       )
@@ -226,6 +227,7 @@ async function generateLetterContent(
 async function handleGenerationFailure(
   supabase: Awaited<ReturnType<typeof createClient>>,
   letterId: string,
+  userId: string,
   error: unknown,
   eligibility: Awaited<ReturnType<typeof checkGenerationEligibility>>
 ) {
@@ -242,7 +244,7 @@ async function handleGenerationFailure(
 
   // Refund if we deducted
   if (!shouldSkipDeduction(eligibility)) {
-    await refundLetterAllowance(letterId, 1)
+    await refundLetterAllowance(userId, 1)
   }
 
   // Log audit trail

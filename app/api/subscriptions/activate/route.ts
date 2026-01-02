@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const { error: rpcError } = await supabase
       .rpc('add_letter_allowances', {
         sub_id: subscriptionId,
-        plan_name: planType
+        plan: planType
       });
 
     if (rpcError) {

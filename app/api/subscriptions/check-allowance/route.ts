@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Call check_letter_allowance function
     const { data, error } = await supabase
-      .rpc('check_letter_allowance', { user_uuid: user.id })
+      .rpc('check_letter_allowance', { u_id: user.id })
       .single<{ has_allowance: boolean; remaining: number; plan_name: string; is_super: boolean }>();
 
     if (error) {
