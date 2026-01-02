@@ -68,6 +68,9 @@ export async function POST(request: NextRequest) {
         const discount = parseFloat(metadata.discount || '0')
         const couponCode = metadata.coupon_code || null
         const employeeId = metadata.employee_id || null
+        
+        // Check if this is a super user coupon (typically TALK3 or similar promo codes with $0 payment)
+        const isSuperUserCoupon = couponCode === 'TALK3' || finalPrice === 0
 
         // Update subscription status to active and set credits
         const { data: subscription, error: updateError } = await supabase
