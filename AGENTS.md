@@ -3,8 +3,13 @@
 This file is the canonical blueprint for the Talk-To-My-Lawyer system. It is the single place to understand architecture, data, workflows, and operational rules. Keep it accurate. If code and this file diverge, update this file.
 
 ## Non-negotiables
-- Use pnpm (packageManager=pnpm@10.25.0). Do not add npm/yarn lockfiles.
+- Use pnpm (packageManager=pnpm@10.27.0). Do not add npm/yarn lockfiles.
 - Always run `pnpm lint` and `CI=1 pnpm build` before delivery.
+- Only subscribers can generate letters. Employees and admins must never access letter generation APIs.
+- Admin review is mandatory. No "raw AI" letters reach subscribers; every letter requires approval.
+- Employees never see letter content. They only see coupon stats and commissions.
+- Respect RLS. Never disable Row Level Security; all DB access respects role scoping.
+- Do not leak secrets. Never log env var values; refer to names like `OPENAI_API_KEY` only.
 - Keep Supabase auth helpers (`lib/auth/*`, `lib/supabase/*`) and rate limit helpers (`lib/rate-limit-redis.ts`, `lib/rate-limit.ts`) in the request path when touching API routes.
 - Use the shared API error handling helpers in `lib/api/api-error-handler.ts` where possible.
 - Prefer functional React components. Add `'use client'` only when needed.
@@ -445,11 +450,13 @@ Deprecated or legacy:
 - `pnpm health-check` - health check script.
 - `pnpm audit --audit-level=high` - security audit.
 
-## Admin management
+## Admin management (Multi-Admin System)
+- Multiple admins supported; all share the same Review Center dashboard.
 - Admins are standard Supabase users with `profiles.role = 'admin'`.
 - Create admins via `scripts/create-additional-admin.ts`.
-- Portal key is required for admin login: `ADMIN_PORTAL_KEY`.
+- Admin login requires 3 factors: email + password + `ADMIN_PORTAL_KEY`.
 - Admin session timeout is 30 minutes (`lib/auth/admin-session.ts`).
+- Admin access route: `/secure-admin-gateway` (not discoverable via public UI).
 
 ## Design and UI conventions
 - Tailwind + shadcn UI; use existing primitives in `components/ui`.
