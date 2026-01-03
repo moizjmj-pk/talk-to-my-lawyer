@@ -1,16 +1,24 @@
 # Dependencies
 node_modules/
 .pnpm-store/
+.npm/
+.yarn/
+package-lock.json
+yarn.lock
 
 # Environment variables - NEVER commit these
 .env
 .env.local
 .env*.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
 .env.production.local
 .env.production
 .env.ci
+.env.staging
+*.env
 
 # Sensitive documentation - NEVER commit files with actual secrets
 VERCEL_ENV_SETUP.md
@@ -18,12 +26,20 @@ VERCEL_ENV_SETUP.md
 *_CREDENTIALS.md
 *.secrets
 *.credentials
+secrets.json
+credentials.json
+
+# API Keys and tokens
+*.key
+*.token
+api-keys.json
 
 # Next.js
 .next/
 out/
 build/
 dist/
+.swc/
 
 # Debug
 npm-debug.log*
@@ -33,23 +49,31 @@ pnpm-debug.log*
 *.log
 *.bak
 *.tmp
+debug.log
 
 # Local development
 .DS_Store
+Thumbs.db
 *.pem
 *.local
 *..local.*
+.cache/
 
 # IDE / Editor settings
 .vscode/settings.json
+.vscode/launch.json
 .idea/
 *.sublime-*
+*.swp
+*.swo
+*~
 
 # Vercel
 .vercel
 
 # Supabase CLI local metadata
 supabase/.temp/*
+supabase/.branches/
 
 # TypeScript
 *.tsbuildinfo
@@ -58,10 +82,14 @@ next-env.d.ts
 # Claude Code
 .claude/
 
+# AI Toolkit
+.aitk/
+
 # Shell scripts with secrets
 claude_code_zai_env.sh
 vercel-add-env.sh
 vercel-env.json
+*.sh.local
 
 # Testing
 /coverage/
@@ -69,6 +97,27 @@ vercel-env.json
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.nyc_output/
+junit.xml
 
 # Emergent AI
 .emergent/
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
+.eslintcache
+.stylelintcache
+*.tgz
+.turbo/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Certificates
+*.crt
+*.p12
+*.pfx
