@@ -10,6 +10,9 @@
 export async function register() {
   // Only run instrumentation in Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    // Initialize OpenTelemetry tracing first
+    await initializeTracing()
+    
     console.log('[Instrumentation] Initializing server instrumentation...')
 
     // Initialize graceful shutdown handler
@@ -32,5 +35,16 @@ export async function register() {
     })
 
     console.log('[Instrumentation] Server instrumentation complete')
+  }
+}
+
+async function initializeTracing() {
+  try {
+    const { setupTracing } = await import('./lib/monitoring/tracing')
+    await setupTracing()
+    console.log('[Instrumentation] OpenTelemetry tracing initialized')
+  } catch (error) {
+    console.error('[Instrumentation] Failed to initialize tracing:', error)
+    // Don't throw - allow app to continue without tracing
   }
 }

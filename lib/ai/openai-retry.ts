@@ -1,11 +1,12 @@
 /**
  * OpenAI Retry Logic with Exponential Backoff
- * Provides robust retry mechanism for OpenAI API calls
+ * Provides robust retry mechanism for OpenAI API calls with OpenTelemetry tracing
  */
 
 import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 import { createHash, randomBytes } from "crypto"
+import { createAISpan, addSpanAttributes, recordSpanEvent } from '../monitoring/tracing'
 
 export interface RetryConfig {
   maxRetries: number
@@ -159,101 +160,166 @@ export class OpenAIRetryClient {
     maxOutputTokens?: number
     model?: string
   }): Promise<RetryResult<string>> {
+    const span = createAISpan('generateTextWithRetry', {
+      'ai.model': params.model || 'gpt-4-turbo',
+      'ai.temperature': params.temperature || 0.7,
+      'ai.max_output_tokens': params.maxOutputTokens || 2048,
+      'ai.prompt_length': params.prompt.length,
+      'ai.system_prompt_length': params.system?.length || 0,
+    })
+
     const startTime = Date.now()
     const retryHistory: RetryResult<string>['retryHistory'] = []
 
-    // Check circuit breaker
-    if (!this.circuitBreaker.canExecute()) {
-      return {
-        success: false,
-        error: new Error('Circuit breaker is open - OpenAI service temporarily unavailable'),
-        attempts: 0,
-        totalDurationMs: 0,
-        retryHistory
-      }
-    }
-
-    let lastError: Error | null = null
-
-    for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
-      const attemptStartTime = Date.now()
-      let delay = 0
-
-      try {
-        console.log(`[OpenAI] Attempt ${attempt + 1}/${this.config.maxRetries + 1}`)
-
-        const { text } = await generateText({
-          model: openai(params.model || "gpt-4-turbo"),
-          system: params.system || "You are a professional legal assistant.",
-          prompt: params.prompt,
-          temperature: params.temperature || 0.7,
-          maxOutputTokens: params.maxOutputTokens || 2048,
+    try {
+      // Check circuit breaker
+      if (!this.circuitBreaker.canExecute()) {
+        recordSpanEvent('circuit_breaker_open')
+        span.setStatus({ 
+          code: 2, // ERROR
+          message: 'Circuit breaker is open'
         })
-
-        if (!text) {
-          throw new Error("Empty response from OpenAI")
-        }
-
-        // Success - update circuit breaker and return
-        this.circuitBreaker.onSuccess()
-
-        const duration = Date.now() - attemptStartTime
-        retryHistory.push({
-          attempt: attempt + 1,
-          delay,
-          duration
-        })
-
+        
         return {
-          success: true,
-          data: text,
-          attempts: attempt + 1,
-          totalDurationMs: Date.now() - startTime,
+          success: false,
+          error: new Error('Circuit breaker is open - OpenAI service temporarily unavailable'),
+          attempts: 0,
+          totalDurationMs: 0,
           retryHistory
         }
+      }
 
-      } catch (error: any) {
-        lastError = error
-        const duration = Date.now() - attemptStartTime
+      let lastError: Error | null = null
 
-        retryHistory.push({
-          attempt: attempt + 1,
-          delay,
-          error: error.message,
-          duration
-        })
+      for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
+        const attemptStartTime = Date.now()
+        let delay = 0
 
-        console.error(`[OpenAI] Attempt ${attempt + 1} failed:`, {
-          error: error.message,
-          status: error.status,
-          code: error.code,
-          duration
-        })
+        try {
+          console.log(`[OpenAI] Attempt ${attempt + 1}/${this.config.maxRetries + 1}`)
+          
+          recordSpanEvent('ai_generation_attempt', {
+            attempt: attempt + 1,
+            max_retries: this.config.maxRetries + 1,
+          })
 
-        // Check if error is retryable
-        if (!this.isRetryableError(error) || attempt === this.config.maxRetries) {
-          this.circuitBreaker.onFailure()
-          break
-        }
+          const { text } = await generateText({
+            model: openai(params.model || "gpt-4-turbo"),
+            system: params.system || "You are a professional legal assistant.",
+            prompt: params.prompt,
+            temperature: params.temperature || 0.7,
+            maxOutputTokens: params.maxOutputTokens || 2048,
+          })
 
-        // Calculate delay for next attempt
-        if (attempt < this.config.maxRetries) {
-          delay = this.calculateBackoffDelay(attempt)
-          console.log(`[OpenAI] Waiting ${delay}ms before retry...`)
-          await this.sleep(delay)
+          if (!text) {
+            throw new Error("Empty response from OpenAI")
+          }
+
+          // Success - update circuit breaker and return
+          this.circuitBreaker.onSuccess()
+
+          const duration = Date.now() - attemptStartTime
+          retryHistory.push({
+            attempt: attempt + 1,
+            delay,
+            duration
+          })
+
+          addSpanAttributes({
+            'ai.response_length': text.length,
+            'ai.attempts': attempt + 1,
+            'ai.total_duration_ms': Date.now() - startTime,
+            'ai.success': true,
+          })
+
+          recordSpanEvent('ai_generation_success', {
+            attempt: attempt + 1,
+            response_length: text.length,
+            duration_ms: duration,
+          })
+
+          span.setStatus({ code: 1 }) // SUCCESS
+
+          return {
+            success: true,
+            data: text,
+            attempts: attempt + 1,
+            totalDurationMs: Date.now() - startTime,
+            retryHistory
+          }
+
+        } catch (error: any) {
+          lastError = error
+          const duration = Date.now() - attemptStartTime
+
+          retryHistory.push({
+            attempt: attempt + 1,
+            delay,
+            error: error.message,
+            duration
+          })
+
+          console.error(`[OpenAI] Attempt ${attempt + 1} failed:`, {
+            error: error.message,
+            status: error.status,
+            code: error.code,
+            duration
+          })
+
+          recordSpanEvent('ai_generation_error', {
+            attempt: attempt + 1,
+            error_message: error.message,
+            error_code: error.code || error.status || 'unknown',
+            duration_ms: duration,
+          })
+
+          // Check if error is retryable
+          if (!this.isRetryableError(error) || attempt === this.config.maxRetries) {
+            this.circuitBreaker.onFailure()
+            break
+          }
+
+          // Calculate delay for next attempt
+          if (attempt < this.config.maxRetries) {
+            delay = this.calculateBackoffDelay(attempt)
+            console.log(`[OpenAI] Waiting ${delay}ms before retry...`)
+            
+            recordSpanEvent('ai_retry_backoff', {
+              delay_ms: delay,
+              next_attempt: attempt + 2,
+            })
+            
+            await this.sleep(delay)
+          }
         }
       }
-    }
 
-    // All retries failed
-    this.circuitBreaker.onFailure()
+      // All retries failed
+      this.circuitBreaker.onFailure()
 
-    return {
-      success: false,
-      error: lastError || new Error('Unknown error'),
-      attempts: this.config.maxRetries + 1,
-      totalDurationMs: Date.now() - startTime,
-      retryHistory
+      addSpanAttributes({
+        'ai.success': false,
+        'ai.attempts': this.config.maxRetries + 1,
+        'ai.total_duration_ms': Date.now() - startTime,
+        'ai.final_error': lastError?.message || 'Unknown error',
+      })
+
+      span.recordException(lastError || new Error('Unknown error'))
+      span.setStatus({ 
+        code: 2, // ERROR
+        message: lastError?.message || 'All retries failed'
+      })
+
+      return {
+        success: false,
+        error: lastError || new Error('Unknown error'),
+        attempts: this.config.maxRetries + 1,
+        totalDurationMs: Date.now() - startTime,
+        retryHistory
+      }
+      
+    } finally {
+      span.end()
     }
   }
 
@@ -342,16 +408,39 @@ export async function generateTextWithRetry(params: {
   maxOutputTokens?: number
   model?: string
 }): Promise<{ text: string; attempts: number; duration: number }> {
-  const result = await openAIRetryClient.generateTextWithRetry(params)
+  const span = createAISpan('generateTextWithRetryWrapper', {
+    'ai.model': params.model || 'gpt-4-turbo',
+    'ai.prompt_length': params.prompt.length,
+  })
 
-  if (!result.success || !result.data) {
-    throw result.error || new Error('Failed to generate text after retries')
-  }
+  try {
+    const result = await openAIRetryClient.generateTextWithRetry(params)
 
-  return {
-    text: result.data,
-    attempts: result.attempts,
-    duration: result.totalDurationMs
+    if (!result.success || !result.data) {
+      span.recordException(result.error || new Error('Failed to generate text'))
+      span.setStatus({ 
+        code: 2, // ERROR
+        message: result.error?.message || 'Failed to generate text after retries'
+      })
+      throw result.error || new Error('Failed to generate text after retries')
+    }
+
+    addSpanAttributes({
+      'ai.success': true,
+      'ai.attempts': result.attempts,
+      'ai.duration_ms': result.totalDurationMs,
+      'ai.response_length': result.data.length,
+    })
+
+    span.setStatus({ code: 1 }) // SUCCESS
+
+    return {
+      text: result.data,
+      attempts: result.attempts,
+      duration: result.totalDurationMs
+    }
+  } finally {
+    span.end()
   }
 }
 
@@ -385,6 +474,11 @@ export async function checkOpenAIHealth(): Promise<{
   responseTime?: number
   error?: string
 }> {
+  const span = createAISpan('healthCheck', {
+    'ai.operation': 'health_check',
+    'ai.model': 'gpt-4-turbo',
+  })
+
   try {
     const startTime = Date.now()
 
@@ -398,16 +492,51 @@ export async function checkOpenAIHealth(): Promise<{
     })
 
     const responseTime = Date.now() - startTime
+    const isHealthy = result.success && result.data === 'OK'
+
+    addSpanAttributes({
+      'ai.health.response_time_ms': responseTime,
+      'ai.health.is_healthy': isHealthy,
+      'ai.health.attempts': result.attempts,
+    })
+
+    if (isHealthy) {
+      recordSpanEvent('health_check_success', {
+        response_time_ms: responseTime,
+        attempts: result.attempts,
+      })
+      span.setStatus({ code: 1 }) // SUCCESS
+    } else {
+      recordSpanEvent('health_check_failure', {
+        error: result.error?.message || 'Response was not "OK"',
+      })
+      span.setStatus({ 
+        code: 2, // ERROR
+        message: result.error?.message || 'Response was not "OK"'
+      })
+    }
 
     return {
-      healthy: result.success && result.data === 'OK',
+      healthy: isHealthy,
       responseTime,
       error: result.success ? undefined : result.error?.message
     }
   } catch (error: any) {
+    span.recordException(error)
+    span.setStatus({ 
+      code: 2, // ERROR
+      message: error.message
+    })
+
+    recordSpanEvent('health_check_exception', {
+      error: error.message,
+    })
+
     return {
       healthy: false,
       error: error.message
     }
+  } finally {
+    span.end()
   }
 }

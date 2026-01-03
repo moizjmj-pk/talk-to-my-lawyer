@@ -25,6 +25,7 @@ import {
   shouldSkipDeduction,
 } from '@/lib/services/allowance-service'
 import type { LetterGenerationResponse } from '@/lib/types/letter.types'
+import { createBusinessSpan, createDatabaseSpan, addSpanAttributes, recordSpanEvent } from '@/lib/monitoring/tracing'
 
 export const runtime = "nodejs"
 
@@ -32,10 +33,22 @@ export const runtime = "nodejs"
  * Generate a letter using AI
  */
 export async function POST(request: NextRequest) {
+  const span = createBusinessSpan('generate_letter', {
+    'http.method': 'POST',
+    'http.route': '/api/generate-letter',
+  })
+
   try {
+    recordSpanEvent('letter_generation_started')
+    
     // 1. Apply rate limiting
     const rateLimitResponse = await safeApplyRateLimit(request, letterGenerationRateLimit, 5, "1 h")
     if (rateLimitResponse) {
+      recordSpanEvent('rate_limit_exceeded')
+      span.setStatus({ 
+        code: 2, // ERROR
+        message: 'Rate limit exceeded'
+      })
       return rateLimitResponse
     }
 
@@ -44,8 +57,22 @@ export async function POST(request: NextRequest) {
     // 2. Auth Check
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
+      recordSpanEvent('authentication_failed', {
+        error: authError?.message || 'No user found',
+      })
+      span.setStatus({ 
+        code: 2, // ERROR
+        message: 'Authentication failed'
+      })
       return errorResponses.unauthorized()
     }
+
+    addSpanAttributes({
+      'user.id': user.id,
+      'user.email': user.email || 'unknown',
+    })
+
+    recordSpanEvent('authentication_successful')
 
     // 3. Role Check
     const { data: profile } = await supabase
@@ -182,7 +209,17 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: unknown) {
+    span.recordException(error as Error)
+    span.setStatus({ 
+      code: 2, // ERROR
+      message: error instanceof Error ? error.message : 'Unknown error'
+    })
+    recordSpanEvent('letter_generation_failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
     return handleApiError(error, 'GenerateLetter')
+  } finally {
+    span.end()
   }
 }
 
@@ -193,32 +230,79 @@ async function generateLetterContent(
   letterType: string,
   intakeData: Record<string, unknown>
 ): Promise<string> {
-  const prompt = buildPrompt(letterType, intakeData)
-
-  console.log('[GenerateLetter] Starting AI generation with retry logic')
-  const generationStartTime = Date.now()
-
-  const { text: generatedContent, attempts, duration } = await generateTextWithRetry({
-    prompt,
-    system: "You are a professional legal attorney drafting formal legal letters. Always produce professional, legally sound content with proper formatting.",
-    temperature: 0.7,
-    maxOutputTokens: 2048,
-    model: "gpt-4-turbo"
+  const span = createAISpan('generateLetterContent', {
+    'ai.letter_type': letterType,
+    'ai.intake_data_fields': Object.keys(intakeData).length,
   })
 
-  const generationTime = Date.now() - generationStartTime
-  console.log(`[GenerateLetter] AI generation completed:`, {
-    attempts,
-    duration,
-    generationTime,
-    contentLength: generatedContent.length
-  })
+  try {
+    const prompt = buildPrompt(letterType, intakeData)
+    
+    addSpanAttributes({
+      'ai.prompt_length': prompt.length,
+    })
 
-  if (!generatedContent) {
-    throw new Error("AI returned empty content")
+    console.log('[GenerateLetter] Starting AI generation with retry logic')
+    const generationStartTime = Date.now()
+
+    recordSpanEvent('ai_generation_starting', {
+      letter_type: letterType,
+      prompt_length: prompt.length,
+    })
+
+    const { text: generatedContent, attempts, duration } = await generateTextWithRetry({
+      prompt,
+      system: "You are a professional legal attorney drafting formal legal letters. Always produce professional, legally sound content with proper formatting.",
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+      model: "gpt-4-turbo"
+    })
+
+    const generationTime = Date.now() - generationStartTime
+    console.log(`[GenerateLetter] AI generation completed:`, {
+      attempts,
+      duration,
+      generationTime,
+      contentLength: generatedContent.length
+    })
+
+    if (!generatedContent) {
+      const error = new Error("AI returned empty content")
+      span.recordException(error)
+      span.setStatus({ 
+        code: 2, // ERROR
+        message: 'AI returned empty content'
+      })
+      throw error
+    }
+
+    addSpanAttributes({
+      'ai.attempts': attempts,
+      'ai.duration_ms': duration,
+      'ai.generation_time_ms': generationTime,
+      'ai.content_length': generatedContent.length,
+      'ai.success': true,
+    })
+
+    recordSpanEvent('ai_generation_completed', {
+      attempts,
+      duration_ms: duration,
+      content_length: generatedContent.length,
+    })
+
+    span.setStatus({ code: 1 }) // SUCCESS
+    return generatedContent
+
+  } catch (error) {
+    span.recordException(error as Error)
+    span.setStatus({ 
+      code: 2, // ERROR
+      message: error instanceof Error ? error.message : 'Unknown error'
+    })
+    throw error
+  } finally {
+    span.end()
   }
-
-  return generatedContent
 }
 
 /**
