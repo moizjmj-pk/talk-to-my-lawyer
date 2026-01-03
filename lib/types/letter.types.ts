@@ -35,7 +35,7 @@ export type LetterType =
 export interface Letter {
   id: string
   user_id: string
-  letter_type: LetterType | string
+  letter_type: LetterType | string | null
   title: string
   status: LetterStatus
   intake_data: Record<string, unknown> | null
@@ -43,16 +43,11 @@ export interface Letter {
   final_content: string | null
   review_notes: string | null
   rejection_reason: string | null
-  recipient_name: string | null
-  recipient_email: string | null
-  recipient_company: string | null
-  recipient_address: string | null
-  sender_name: string | null
-  sender_company: string | null
   draft_metadata: Record<string, unknown> | null
+  pdf_url: string | null
   reviewed_by: string | null
   reviewed_at: string | null
-  completed_at: string | null
+  approved_at: string | null
   created_at: string
   updated_at: string
 }
@@ -64,7 +59,7 @@ export interface LetterWithProfile extends Letter {
   profile?: {
     full_name: string | null
     email: string | null
-    company: string | null
+    company_name: string | null
   }
 }
 
@@ -75,10 +70,11 @@ export interface LetterAuditTrail {
   id: string
   letter_id: string
   action: string
+  performed_by: string | null
   old_status: string | null
   new_status: string | null
   notes: string | null
-  created_by: string | null
+  metadata: Record<string, any> | null
   created_at: string
 }
 
@@ -120,16 +116,6 @@ export interface DraftSaveRequest {
   title?: string
   content?: string
   letterType?: LetterType | string
-  recipientInfo?: {
-    name?: string
-    email?: string
-    company?: string
-    address?: string
-  }
-  senderInfo?: {
-    name?: string
-    company?: string
-  }
   metadata?: Record<string, unknown>
 }
 
