@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai } from '@ai-sdk/openai'
 import { generateText } from 'ai'
 import { adminRateLimit, safeApplyRateLimit } from '@/lib/rate-limit-redis'
 import { validateAdminAction } from '@/lib/admin/letter-actions'
 import { sanitizeString } from '@/lib/security/input-sanitizer'
+import { getOpenAIModel } from '@/lib/ai/openai-client'
 
 export async function POST(
   request: NextRequest,
@@ -45,7 +45,7 @@ export async function POST(
     const prompt = buildImprovementPrompt(sanitizedContent, sanitizedInstruction)
 
     const { text: improvedContent } = await generateText({
-      model: openai("gpt-4-turbo"),
+      model: getOpenAIModel("gpt-4-turbo"),
       system: "You are a professional legal attorney improving formal legal letters. Always maintain professional legal tone and proper formatting.",
       prompt,
       temperature: 0.7,

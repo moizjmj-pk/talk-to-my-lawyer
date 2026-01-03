@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateText } from 'ai'
-import { openai } from '@ai-sdk/openai'
 import { letterGenerationRateLimit, safeApplyRateLimit } from '@/lib/rate-limit-redis'
 import { checkGenerationEligibility, deductLetterAllowance, shouldSkipDeduction } from '@/lib/services/allowance-service'
+import { getOpenAIModel } from '@/lib/ai/openai-client'
 
 export async function POST(
   request: NextRequest,
@@ -73,7 +73,7 @@ export async function POST(
       const prompt = buildResubmitPrompt(letter, letter.rejection_reason)
 
       const { text: generatedContent } = await generateText({
-        model: openai("gpt-4-turbo"),
+        model: getOpenAIModel("gpt-4-turbo"),
         system: "You are a professional legal attorney revising a formal legal letter based on feedback. Incorporate the rejection feedback to create an improved, professional letter.",
         prompt,
         temperature: 0.7,
